@@ -81,7 +81,7 @@ def get_valid_guess(guessed):
             print(Fore.RED + 'Invalid input. Enter numbers between 0 and 4.')
 
 
-def main():
+def run_game():
     print('*' * 75)
     print(BANNER)
     print('Welcome to Ultimate BATTLESHIPS!')
@@ -92,12 +92,10 @@ def main():
     player_score = 0
     computer_score = 0
 
-    # Initialize boards
     player_board = [['-' for _ in range(5)] for _ in range(5)]
     computer_board = [['-' for _ in range(5)] for _ in range(5)]
     display_board = [['-' for _ in range(5)] for _ in range(5)]
 
-    # Place ships
     place_ships(player_board, '@')
     place_ships(computer_board, "'")
 
@@ -112,7 +110,6 @@ def main():
     turns = 0
 
     while turns < 5 and player_score < 4 and computer_score < 4:
-        # Player's turn
         row, col = get_valid_guess(player_guesses)
         player_guesses.add((row, col))
         turns += 1
@@ -127,7 +124,6 @@ def main():
 
         draw_field(display_board)
 
-        # Computer's turn
         while True:
             r = random.randint(0, 4)
             c = random.randint(0, 4)
@@ -146,13 +142,21 @@ def main():
         print(Fore.CYAN + f"Score -> {name}: {player_score} | Computer: {computer_score}")
         print('-' * 50)
 
-    # Game result
     if player_score > computer_score:
         print(Fore.GREEN + f"Congratulations {name}, you won!")
     elif player_score < computer_score:
         print(Fore.RED + f"Sorry {name}, you lost.")
     else:
         print(Fore.YELLOW + "It's a draw!")
+
+
+def main():
+    while True:
+        run_game()
+        replay = input(Fore.CYAN + 'Play again? (Y/N): ').strip().lower()
+        if replay != 'y':
+            print(Fore.MAGENTA + 'Thanks for playing Ultimate BATTLESHIPS!')
+            break
 
 
 if __name__ == '__main__':
