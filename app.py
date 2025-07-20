@@ -1,159 +1,117 @@
+import os
 import random
-from colorama import Fore, init
+from flask import Flask, session, request, redirect, url_for, render_template_string
 
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret')
 
-# Initialize colorama
-init(autoreset=True)
-
-
-BANNER = '''
- #####    ##   ##### ##### #      ######  ####  #    # # #####   ####     
- #    #  #  #    #     #   #      #      #      #    # # #    # #         
- #####  #    #   #     #   #      #####   ####  ###### # #    #  ####     
- #    # ######   #     #   #      #           # #    # # #####       #    
- #    # #    #   #     #   #      #      #    # #    # # #      #    #    
- #####  #    #   #     #   ###### ######  ####  #    # # #       ####      
+TEMPLATE = '''
+<!doctype html>
+<title>Ultimate BATTLESHIPS</title>
+<h1>Ultimate BATTLESHIPS</h1>
+<p>{{ message }}</p>
+<p>Turns: {{ turns }} / 5 | Score: You {{ player_score }} - Computer {{ computer_score }}</p>
+<form method="post">
+  Row (0-4): <input name="row" type="number" min="0" max="4" required>
+  Col (0-4): <input name="col" type="number" min="0" max="4" required>
+  <button type="submit">Guess</button>
+</form>
+<table border="1" cellpadding="5">
+  {% for row in board %}
+  <tr>
+    {% for cell in row %}
+      <td style="width:30px; text-align:center;">
+      {% if cell == '$' %}
+        🔥
+      {% elif cell == 'X' %}
+        ❌
+      {% else %}
+        {{ cell }}
+      {% endif %}
+      </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+{% if game_over %}
+  <p><a href="{{ url_for('reset') }}">Restart Game</a></p>
+{% endif %}
 '''
 
+def init_game():
+    session['player_board'] = [['-' for _ in range(5)] for _ in range(5)]
+    session['computer_board'] = [['-' for _ in range(5)] for _ in range(5)]
+    session['display_board'] = [['-' for _ in range(5)] for _ in range(5)]
+    session['guessed'] = []
+    session['turns'] = 0
+    session['player_score'] = 0
+    session['computer_score'] = 0
 
-def draw_field(field):
-    """
-    Draw the game board using the provided 2D list.
-    """
-    for row in field:
-        for cell in row:
-            if cell == '@':
-                print(Fore.GREEN + cell, end=' ')
-            elif cell == 'X':
-                print(Fore.RED + cell, end=' ')
-            elif cell == '-':
-                print(Fore.WHITE + cell, end=' ')
-            elif cell == '£':
-                print(Fore.BLUE + cell, end=' ')
-            elif cell == '$':
-                print(Fore.YELLOW + cell, end=' ')
+    def place(board, symbol):
+        ships = set()
+        while len(ships) < 4:
+            r, c = random.randint(0, 4), random.randint(0, 4)
+            if (r, c) not in ships:
+                ships.add((r, c))
+                board[r][c] = symbol
+
+    place(session['player_board'], 'P')
+    place(session['computer_board'], 'C')
+
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    if 'player_board' not in session:
+        init_game()
+
+    message = ''
+    game_over = False
+
+    if request.method == 'POST':
+        row = int(request.form['row'])
+        col = int(request.form['col'])
+        if (row, col) in session['guessed']:
+            message = 'You already guessed that location.'
+        else:
+            session['guessed'].append((row, col))
+            session['turns'] += 1
+            if session['computer_board'][row][col] == 'C':
+                session['display_board'][row][col] = '$'
+                session['player_score'] += 1
+                message = 'Hit!'
             else:
-                print(Fore.CYAN + cell, end=' ')
-        print()
-    print()
+                session['display_board'][row][col] = 'X'
+                message = 'Miss!'
 
+            # Computer turn
+            while True:
+                r, c = random.randint(0, 4), random.randint(0, 4)
+                if (r, c) not in session['guessed']:
+                    session['guessed'].append((r, c))
+                    break
+            if session['player_board'][r][c] == 'P':
+                session['player_board'][r][c] = '£'
+                session['computer_score'] += 1
 
-def place_ships(board, symbol):
-    """
-    Randomly place 4 ships on the given board.
-    Ships are marked using the provided symbol.
-    """
-    ships = set()
-    while len(ships) < 4:
-        row = random.randint(0, 4)
-        col = random.randint(0, 4)
-        if (row, col) not in ships:
-            ships.add((row, col))
-            board[row][col] = symbol
+            if (session['turns'] >= 5 or
+                session['player_score'] >= 4 or
+                session['computer_score'] >= 4):
+                game_over = True
 
+    return render_template_string(
+        TEMPLATE,
+        board=session['display_board'],
+        message=message,
+        turns=session.get('turns', 0),
+        player_score=session.get('player_score', 0),
+        computer_score=session.get('computer_score', 0),
+        game_over=game_over
+    )
 
-def get_valid_name():
-    """
-    Prompt the user for a name containing only letters.
-    """
-    while True:
-        name = input(Fore.GREEN + 'Enter your name: ')
-        if name.isalpha():
-            return name
-        print(Fore.RED + 'Name must contain only letters. Please try again.')
-
-
-def get_valid_guess(guessed):
-    """
-    Prompt for a row and column guess, ensure integers 0-4 and not guessed before.
-    """
-    while True:
-        try:
-            row = int(input('Guess a row (0-4): '))
-            col = int(input('Guess a column (0-4): '))
-            if not (0 <= row <= 4 and 0 <= col <= 4):
-                raise ValueError
-            if (row, col) in guessed:
-                print(Fore.RED + 'You\'ve already guessed that location. Choose another.')
-                continue
-            return row, col
-        except ValueError:
-            print(Fore.RED + 'Invalid input. Enter numbers between 0 and 4.')
-
-
-def main():
-    print('*' * 75)
-    print(BANNER)
-    print('Welcome to Ultimate BATTLESHIPS!')
-    print('Board size: 5x5, Ships per side: 4, Turns: 5')
-    print('*' * 75)
-
-    name = get_valid_name()
-    player_score = 0
-    computer_score = 0
-
-    # Initialize boards
-    player_board = [['-' for _ in range(5)] for _ in range(5)]
-    computer_board = [['-' for _ in range(5)] for _ in range(5)]
-    display_board = [['-' for _ in range(5)] for _ in range(5)]
-
-    # Place ships
-    place_ships(player_board, '@')
-    place_ships(computer_board, "'")
-
-    print(f"\n{name}'s Board:")
-    draw_field(player_board)
-
-    print("Computer's Board:")
-    draw_field(display_board)
-
-    player_guesses = set()
-    computer_guesses = set()
-    turns = 0
-
-    while turns < 5 and player_score < 4 and computer_score < 4:
-        # Player's turn
-        row, col = get_valid_guess(player_guesses)
-        player_guesses.add((row, col))
-        turns += 1
-
-        if computer_board[row][col] == "'":
-            print(Fore.YELLOW + 'Hit! You sank an enemy ship!')
-            display_board[row][col] = '$'
-            player_score += 1
-        else:
-            print(Fore.RED + 'Miss!')
-            display_board[row][col] = 'X'
-
-        draw_field(display_board)
-
-        # Computer's turn
-        while True:
-            r = random.randint(0, 4)
-            c = random.randint(0, 4)
-            if (r, c) not in computer_guesses:
-                computer_guesses.add((r, c))
-                break
-        print(f"Computer guesses: {(r, c)}")
-        if player_board[r][c] == '@':
-            print(Fore.BLUE + 'Computer hit your ship!')
-            player_board[r][c] = '£'
-            computer_score += 1
-        else:
-            print(Fore.WHITE + 'Computer missed.')
-
-        draw_field(player_board)
-        print(Fore.CYAN + f"Score -> {name}: {player_score} | Computer: {computer_score}")
-        print('-' * 50)
-
-    # Game result
-    if player_score > computer_score:
-        print(Fore.GREEN + f"Congratulations {name}, you won!")
-    elif player_score < computer_score:
-        print(Fore.RED + f"Sorry {name}, you lost.")
-    else:
-        print(Fore.YELLOW + "It's a draw!")
-
+@app.route('/reset')
+def reset():
+    init_game()
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    main()
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
