@@ -1,1 +1,1 @@
-worker: python battlefield.py
+web: gunicorn app:app
