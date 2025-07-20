@@ -99,7 +99,33 @@ No critical issues at present. All anticipated edge cases and invalid inputs are
    git push heroku main
    heroku ps:scale web=1
    ```
+> **Note:** A pure Python CLI application cannot be exposed as a web service on Heroku. To satisfy deployment requirements, a minimal Flask wrapper (`app.py`) was created to serve a simple web page and launch the CLI game via `heroku run` commands.
 
+* Deployed URL: [https://app-battleship.herokuapp.com](https://app-battleship.herokuapp.com)
+
+## How to Run Locally
+
+1. Clone the repo:
+
+   ```bash
+   git clone https://github.com/BadrAlioui/battleShip.git
+   cd battleShip
+   ```
+2. Create and activate virtual environment:
+
+   ```bash
+   python -m venv venv
+   source venv/Scripts/activate    # on Windows Git Bash
+   ```
+3. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the game:
+
+   ```bash
+   python battlefield.py
 ---
 
 ## Acknowledgements
@@ -109,3 +135,4 @@ No critical issues at present. All anticipated edge cases and invalid inputs are
 * **Colorama**: Cross-platform terminal colors – [pypi.org/project/colorama](https://pypi.org/project/colorama/)
 * Heroku deployment scaffold provided by Code Institute.
 * Developed by **Badr Alioui**.
+
