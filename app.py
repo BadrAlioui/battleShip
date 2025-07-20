@@ -12,19 +12,34 @@ TEMPLATE = '''
 <p>{{ message }}</p>
 <p>Turns: {{ turns }} / 5 | Score: You {{ player_score }} - Computer {{ computer_score }}</p>
 <form method="post">
-  <!-- ... -->
+  Row (0-4): <input name="row" type="number" min="0" max="4" required>
+  Col (0-4): <input name="col" type="number" min="0" max="4" required>
+  <button type="submit">Guess</button>
 </form>
 <table border="1" cellpadding="5">
-  <!-- ... -->
+  {% for row in board %}
+  <tr>
+    {% for cell in row %}
+      <td style="width:30px; text-align:center;">
+      {% if cell == '$' %}
+        🔥
+      {% elif cell == 'X' %}
+        ❌
+      {% else %}
+        {{ cell }}
+      {% endif %}
+      </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
 </table>
-
 {% if game_over %}
   <p><strong>Game Over!</strong></p>
 {% endif %}
 
 <p><a href="{{ url_for('reset') }}">Restart Game</a></p>
-'''
 
+'''
 
 def init_game():
     session['player_board'] = [['-' for _ in range(5)] for _ in range(5)]
